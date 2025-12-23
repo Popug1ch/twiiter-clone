@@ -2,78 +2,143 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload
 from typing import List
+from fastapi import HTTPException
 
 from app.models.tweet import Tweet
 from app.models.tweet_media import TweetMedia
 from app.models.like import Like
+from app.models.media import Media
 from app.models.user import User
 from app.models.follow import Follow
 
+
 async def create_tweet(
-    db: AsyncSession,
-    author_id: int,
-    content: str,
-    media_ids: List[int] | None,
+        db: AsyncSession,
+        author_id: int,
+        content: str,
+        media_ids: List[int] | None = None,
 ) -> int:
+    """Создает твит с проверкой медиа."""
     tweet = Tweet(content=content, author_id=author_id)
     db.add(tweet)
-    await db.flush()
+    await db.flush()  # Получаем tweet.id
+
+    # Проверяем существование медиа
     if media_ids:
-        for mid in media_ids:
-            db.add(TweetMedia(tweet_id=tweet.id, media_id=mid))
+        existing_media = await db.execute(
+            select(Media.id).where(Media.id.in_(media_ids))
+        )
+        existing_ids = {row[0] for row in existing_media.fetchall()}
+        invalid_ids = set(media_ids) - existing_ids
+
+        if invalid_ids:
+            await db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Media not found: {list(invalid_ids)}"
+            )
+
+        # Создаем связи TweetMedia
+        for media_id in media_ids:
+            tweet_media = TweetMedia(tweet_id=tweet.id, media_id=media_id)
+            db.add(tweet_media)
+
     await db.commit()
     await db.refresh(tweet)
     return tweet.id
 
+
 async def delete_tweet(db: AsyncSession, author_id: int, tweet_id: int) -> bool:
-    q = delete(Tweet).where(Tweet.id == tweet_id, Tweet.author_id == author_id)
-    res = await db.execute(q)
+    """Удаляет твит автора."""
+    stmt = delete(Tweet).where(
+        Tweet.id == tweet_id,
+        Tweet.author_id == author_id
+    )
+    result = await db.execute(stmt)
     await db.commit()
-    return res.rowcount > 0
+    return result.rowcount > 0
+
 
 async def like_tweet(db: AsyncSession, user_id: int, tweet_id: int) -> None:
-    stmt = select(Like).where(Like.user_id == user_id, Like.tweet_id == tweet_id)
-    res = await db.execute(stmt)
-    if res.scalar_one_or_none():
-        return
+    """Лайкает твит (если еще не лайкан)."""
+    # Проверяем существующий лайк
+    stmt = select(Like).where(
+        Like.user_id == user_id,
+        Like.tweet_id == tweet_id
+    )
+    result = await db.execute(stmt)
+
+    if result.scalar_one_or_none():
+        return  # Уже лайкнуто
+
+    # Создаем новый лайк
     like = Like(user_id=user_id, tweet_id=tweet_id)
     db.add(like)
     await db.commit()
 
+
 async def unlike_tweet(db: AsyncSession, user_id: int, tweet_id: int) -> None:
-    stmt = delete(Like).where(Like.user_id == user_id, Like.tweet_id == tweet_id)
+    """Убирает лайк с твита."""
+    stmt = delete(Like).where(
+        Like.user_id == user_id,
+        Like.tweet_id == tweet_id
+    )
     await db.execute(stmt)
     await db.commit()
 
-async def get_feed_for_user(db: AsyncSession, user_id: int):
-    following_ids_q = select(Follow.followed_id).where(Follow.follower_id == user_id)
-    following_ids_res = await db.execute(following_ids_q)
-    following_ids = [row[0] for row in following_ids_res.fetchall()]
-    if not following_ids:
+
+async def get_feed_for_user(db: AsyncSession, user_id: int) -> List[dict]:
+    """
+    Возвращает ленту: свои твиты + твиты подписок,
+    отсортированную по популярности.
+    """
+    # Получаем ID подписок + себя
+    following_stmt = select(Follow.followed_id).where(
+        Follow.follower_id == user_id
+    )
+    following_result = await db.execute(following_stmt)
+    following_ids = [row[0] for row in following_result.fetchall()]
+
+    # ← КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: добавляем свои твиты
+    author_ids = [user_id] + following_ids
+
+    if not author_ids:
         return []
-    tweets_q = (
+
+    # Загружаем твиты с связями
+    tweets_stmt = (
         select(Tweet)
-        .where(Tweet.author_id.in_(following_ids))
+        .where(Tweet.author_id.in_(author_ids))  # ← ИЗМЕНЕНО
         .options(
             joinedload(Tweet.author),
             joinedload(Tweet.tweet_medias).joinedload(TweetMedia.media),
             joinedload(Tweet.likes).joinedload(Like.user),
         )
+        .order_by(Tweet.created_at.desc())
     )
-    tweets_res = await db.execute(tweets_q)
-    tweets = tweets_res.scalars().unique().all()
+
+    result = await db.execute(tweets_stmt)
+    tweets = result.scalars().unique().all()
+
+    # Сортируем по популярности (лайкам)
     tweets_sorted = sorted(tweets, key=lambda t: len(t.likes), reverse=True)
+
+    # Формируем ответ
     feed = []
-    for t in tweets_sorted:
-        attachments = [tm.media.filepath for tm in t.tweet_medias]
-        likes = [{"user_id": lk.user.id, "name": lk.user.name} for lk in t.likes]
-        feed.append(
-            {
-                "id": t.id,
-                "content": t.content,
-                "attachments": attachments,
-                "author": {"id": t.author.id, "name": t.author.name},
-                "likes": likes,
-            }
-        )
+    for tweet in tweets_sorted:
+        attachments = [tm.media.filepath for tm in tweet.tweet_medias]
+        likes = [
+            {"user_id": like.user.id, "name": like.user.name}
+            for like in tweet.likes
+        ]
+
+        feed.append({
+            "id": tweet.id,
+            "content": tweet.content,
+            "attachments": attachments,
+            "author": {"id": tweet.author.id, "name": tweet.author.name},
+            "likes": likes,
+        })
+
     return feed
+
