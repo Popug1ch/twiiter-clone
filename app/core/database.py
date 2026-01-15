@@ -17,7 +17,6 @@ async def get_db() -> AsyncGenerator[AsyncSession | Any, Any]:
         yield session
 
 
-# ВАЖНО: импортируем модели, чтобы SQLAlchemy видел классы при конфигурации мапперов
 import app.models.user  # noqa
 import app.models.tweet  # noqa
 import app.models.media  # noqa
