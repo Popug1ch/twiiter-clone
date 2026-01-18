@@ -13,10 +13,10 @@ from app.models.follow import Follow
 
 
 async def create_tweet(
-        db: AsyncSession,
-        author_id: int,
-        content: str,
-        media_ids: List[int] | None = None,
+    db: AsyncSession,
+    author_id: int,
+    content: str,
+    media_ids: List[int] | None = None,
 ) -> int:
     """Создает твит с проверкой медиа."""
     tweet = Tweet(content=content, author_id=author_id)
@@ -34,8 +34,7 @@ async def create_tweet(
         if invalid_ids:
             await db.rollback()
             raise HTTPException(
-                status_code=400,
-                detail=f"Media not found: {list(invalid_ids)}"
+                status_code=400, detail=f"Media not found: {list(invalid_ids)}"
             )
 
         # Создаем связи TweetMedia
@@ -50,10 +49,7 @@ async def create_tweet(
 
 async def delete_tweet(db: AsyncSession, author_id: int, tweet_id: int) -> bool:
     """Удаляет твит автора."""
-    stmt = delete(Tweet).where(
-        Tweet.id == tweet_id,
-        Tweet.author_id == author_id
-    )
+    stmt = delete(Tweet).where(Tweet.id == tweet_id, Tweet.author_id == author_id)
     result = await db.execute(stmt)
     await db.commit()
     return result.rowcount > 0
@@ -62,10 +58,7 @@ async def delete_tweet(db: AsyncSession, author_id: int, tweet_id: int) -> bool:
 async def like_tweet(db: AsyncSession, user_id: int, tweet_id: int) -> None:
     """Лайкает твит (если еще не лайкан)."""
     # Проверяем существующий лайк
-    stmt = select(Like).where(
-        Like.user_id == user_id,
-        Like.tweet_id == tweet_id
-    )
+    stmt = select(Like).where(Like.user_id == user_id, Like.tweet_id == tweet_id)
     result = await db.execute(stmt)
 
     if result.scalar_one_or_none():
@@ -79,10 +72,7 @@ async def like_tweet(db: AsyncSession, user_id: int, tweet_id: int) -> None:
 
 async def unlike_tweet(db: AsyncSession, user_id: int, tweet_id: int) -> None:
     """Убирает лайк с твита."""
-    stmt = delete(Like).where(
-        Like.user_id == user_id,
-        Like.tweet_id == tweet_id
-    )
+    stmt = delete(Like).where(Like.user_id == user_id, Like.tweet_id == tweet_id)
     await db.execute(stmt)
     await db.commit()
 
@@ -93,9 +83,7 @@ async def get_feed_for_user(db: AsyncSession, user_id: int) -> List[dict]:
     отсортированную по популярности.
     """
     # Получаем ID подписок + себя
-    following_stmt = select(Follow.followed_id).where(
-        Follow.follower_id == user_id
-    )
+    following_stmt = select(Follow.followed_id).where(Follow.follower_id == user_id)
     following_result = await db.execute(following_stmt)
     following_ids = [row[0] for row in following_result.fetchall()]
 
@@ -128,17 +116,17 @@ async def get_feed_for_user(db: AsyncSession, user_id: int) -> List[dict]:
     for tweet in tweets_sorted:
         attachments = [tm.media.filepath for tm in tweet.tweet_medias]
         likes = [
-            {"user_id": like.user.id, "name": like.user.name}
-            for like in tweet.likes
+            {"user_id": like.user.id, "name": like.user.name} for like in tweet.likes
         ]
 
-        feed.append({
-            "id": tweet.id,
-            "content": tweet.content,
-            "attachments": attachments,
-            "author": {"id": tweet.author.id, "name": tweet.author.name},
-            "likes": likes,
-        })
+        feed.append(
+            {
+                "id": tweet.id,
+                "content": tweet.content,
+                "attachments": attachments,
+                "author": {"id": tweet.author.id, "name": tweet.author.name},
+                "likes": likes,
+            }
+        )
 
     return feed
-

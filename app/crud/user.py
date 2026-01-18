@@ -4,6 +4,7 @@ from sqlalchemy.orm import joinedload
 from app.models.user import User
 from app.models.follow import Follow
 
+
 async def get_user_by_api_key(api_key: str, db: AsyncSession) -> User | None:
     result = await db.execute(select(User).where(User.api_key == api_key))
     return result.scalar_one_or_none()

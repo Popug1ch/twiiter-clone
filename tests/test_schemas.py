@@ -1,6 +1,10 @@
 import pytest
 from app.schemas.tweet import (
-    TweetCreate, TweetsFeedResponse, TweetInFeed, Author, LikeUser
+    TweetCreate,
+    TweetsFeedResponse,
+    TweetInFeed,
+    Author,
+    LikeUser,
 )
 from app.schemas.user import User, ProfileUser, ProfileResponse
 
@@ -28,7 +32,7 @@ class TestTweetSchemas:
             content="Твит",
             attachments=["/static/media/1.jpg"],
             author=author,
-            likes=[like_user]
+            likes=[like_user],
         )
         assert tweet.id == 1
         assert tweet.author.name == "Иван"

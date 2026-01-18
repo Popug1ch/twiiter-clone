@@ -11,16 +11,38 @@ class TestIntegration:
         profile.followers = []
         profile.following = []
 
-        with patch("app.routers.users.get_me_profile", new=AsyncMock(return_value=profile)), \
-             patch("app.routers.users.follow_user", new=AsyncMock(return_value=None)), \
-             patch("app.routers.tweets.tweet_crud.create_tweet", new=AsyncMock(return_value=123)), \
-             patch("app.routers.tweets.tweet_crud.like_tweet", new=AsyncMock(return_value=None)), \
-             patch("app.routers.tweets.tweet_crud.get_feed_for_user", new=AsyncMock(return_value=sample_feed_data)):
+        with patch(
+            "app.routers.users.get_me_profile", new=AsyncMock(return_value=profile)
+        ), patch(
+            "app.routers.users.follow_user", new=AsyncMock(return_value=None)
+        ), patch(
+            "app.routers.tweets.tweet_crud.create_tweet",
+            new=AsyncMock(return_value=123),
+        ), patch(
+            "app.routers.tweets.tweet_crud.like_tweet", new=AsyncMock(return_value=None)
+        ), patch(
+            "app.routers.tweets.tweet_crud.get_feed_for_user",
+            new=AsyncMock(return_value=sample_feed_data),
+        ):
 
-            assert client.get("/api/users/me", headers=auth_headers).status_code == status.HTTP_200_OK
-            assert client.post("/api/users/2/follow", headers=auth_headers).status_code == status.HTTP_200_OK
-            assert client.post("/api/tweets", headers=auth_headers, json={"tweet_data": "test"}).status_code == status.HTTP_200_OK
-            assert client.post("/api/tweets/123/likes", headers=auth_headers).status_code == status.HTTP_200_OK
+            assert (
+                client.get("/api/users/me", headers=auth_headers).status_code
+                == status.HTTP_200_OK
+            )
+            assert (
+                client.post("/api/users/2/follow", headers=auth_headers).status_code
+                == status.HTTP_200_OK
+            )
+            assert (
+                client.post(
+                    "/api/tweets", headers=auth_headers, json={"tweet_data": "test"}
+                ).status_code
+                == status.HTTP_200_OK
+            )
+            assert (
+                client.post("/api/tweets/123/likes", headers=auth_headers).status_code
+                == status.HTTP_200_OK
+            )
 
             feed_resp = client.get("/api/tweets", headers=auth_headers)
             assert feed_resp.status_code == status.HTTP_200_OK
@@ -29,8 +51,12 @@ class TestIntegration:
 
     def test_media_tweet(self, client, auth_headers):
         """Медиа → твит с медиа."""
-        with patch("app.routers.medias.create_media", new=AsyncMock(return_value=456)), \
-             patch("app.routers.tweets.tweet_crud.create_tweet", new=AsyncMock(return_value=123)):
+        with patch(
+            "app.routers.medias.create_media", new=AsyncMock(return_value=456)
+        ), patch(
+            "app.routers.tweets.tweet_crud.create_tweet",
+            new=AsyncMock(return_value=123),
+        ):
 
             files = {"file": ("test.jpg", b"fake", "image/jpeg")}
             media_resp = client.post("/api/medias", headers=auth_headers, files=files)

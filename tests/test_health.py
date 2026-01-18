@@ -1,6 +1,7 @@
 import pytest
 from fastapi import status
 
+
 class TestHealthEndpoints:
     def test_health(self, client):
         assert client.get("/health").status_code == 200
