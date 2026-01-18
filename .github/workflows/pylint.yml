@@ -1,5 +1,4 @@
-
-name: CI Twitter Clone
+name: CI Diploma Backend
 on: 
   push:
     branches: [ develop, main ]
