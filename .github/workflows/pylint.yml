@@ -1,10 +1,10 @@
-name: CI Clone Twitter
+
+name: CI Twitter Clone
 on: 
   push:
     branches: [ develop, main ]
   pull_request:
     branches: [ develop ]
-
 
 jobs:
   test:
