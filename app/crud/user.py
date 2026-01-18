@@ -8,16 +8,19 @@ async def get_user_by_api_key(api_key: str, db: AsyncSession) -> User | None:
     result = await db.execute(select(User).where(User.api_key == api_key))
     return result.scalar_one_or_none()
 
-async def get_user_profile(user_id: int, db: AsyncSession):
-    result = await db.execute(
+
+async def get_user_profile(user_id: int, db: AsyncSession) -> User | None:
+    stmt = (
         select(User)
         .options(
-            joinedload(User.followers).joinedload(Follow.followed),
-            joinedload(User.following).joinedload(Follow.follower),
+            joinedload(User.followers).joinedload(Follow.follower),
+            joinedload(User.following).joinedload(Follow.followed),
         )
         .where(User.id == user_id)
     )
-    return result.scalar_one_or_none()
+    result = await db.execute(stmt)
+    return result.unique().scalar_one_or_none()
 
-async def get_me_profile(user_id: int, db: AsyncSession):
+
+async def get_me_profile(user_id: int, db: AsyncSession) -> User | None:
     return await get_user_profile(user_id, db)
