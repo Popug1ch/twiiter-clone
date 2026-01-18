@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
 class TweetMedia(Base):
     __tablename__ = "tweet_medias"
 

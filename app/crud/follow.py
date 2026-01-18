@@ -10,17 +10,19 @@ async def follow_user(db: AsyncSession, follower_id: int, following_id: int) -> 
     # Проверяем, нет ли уже такой подписки
     q = select(Follow).where(
         Follow.follower_id == follower_id,
-        Follow.followed_id == following_id,   # ← здесь followed_id
+        Follow.followed_id == following_id,  # ← здесь followed_id
     )
     res = await db.execute(q)
     if res.scalar_one_or_none():
         return
 
     # Создаём подписку
-    db.add(Follow(
-        follower_id=follower_id,
-        followed_id=following_id,             # ← и здесь followed_id
-    ))
+    db.add(
+        Follow(
+            follower_id=follower_id,
+            followed_id=following_id,  # ← и здесь followed_id
+        )
+    )
     await db.commit()
 
 

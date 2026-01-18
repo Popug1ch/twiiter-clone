@@ -11,7 +11,9 @@ class TestUsersAPI:
         profile.followers = []
         profile.following = []
 
-        with patch("app.routers.users.get_me_profile", new=AsyncMock(return_value=profile)):
+        with patch(
+            "app.routers.users.get_me_profile", new=AsyncMock(return_value=profile)
+        ):
             resp = client.get("/api/users/me", headers=auth_headers)
 
         assert resp.status_code == status.HTTP_200_OK
@@ -22,7 +24,9 @@ class TestUsersAPI:
 
     def test_get_profile(self, client):
         """Профиль по ID: может быть 404, это ок."""
-        with patch("app.routers.users.get_user_profile", new=AsyncMock(return_value=None)):
+        with patch(
+            "app.routers.users.get_user_profile", new=AsyncMock(return_value=None)
+        ):
             resp = client.get("/api/users/1")
         assert resp.status_code in [status.HTTP_404_NOT_FOUND, status.HTTP_200_OK]
 

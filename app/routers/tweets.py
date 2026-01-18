@@ -19,7 +19,11 @@ def success(data: dict | None = None) -> dict:
 def error(error_type: str, error_message: str, status_code: int = 400):
     raise HTTPException(
         status_code=status_code,
-        detail={"result": False, "error_type": error_type, "error_message": error_message},
+        detail={
+            "result": False,
+            "error_type": error_type,
+            "error_message": error_message,
+        },
     )
 
 

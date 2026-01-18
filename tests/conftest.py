@@ -1,6 +1,7 @@
 """
 Общие фикстуры для всех тестов.
 """
+
 import asyncio
 from typing import Generator
 from unittest.mock import MagicMock, AsyncMock
@@ -12,7 +13,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import get_current_user, api_key_header  # используем оригинальный api_key_header
+from app.core.security import (
+    get_current_user,
+    api_key_header,
+)  # используем оригинальный api_key_header
 from app.models.user import User
 from app.routers import users, tweets, medias
 from tests.test_app import test_app
@@ -68,7 +72,7 @@ def client(mock_db_session: AsyncMock, mock_user: MagicMock) -> TestClient:
         request: Request,
         api_key: str = Depends(api_key_header),  # точная сигнатура из security.py
         db: AsyncSession = Depends(get_db),
-        mock_user=mock_user  # передаём мок-юзер
+        mock_user=mock_user,  # передаём мок-юзер
     ) -> User:
         if api_key == "user1":
             return mock_user

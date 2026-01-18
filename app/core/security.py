@@ -7,6 +7,7 @@ from app.models.user import User
 
 api_key_header = APIKeyHeader(name="Api-Key", auto_error=False)
 
+
 async def get_current_user(
     request: Request,
     api_key: str = Security(api_key_header),
